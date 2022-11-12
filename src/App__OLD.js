@@ -43,12 +43,6 @@ function App() {
       .then((result) => setPokemons(result));
   }, [currentPage, limit]);
 
-  // ...
-  // stats: stats.reduce((acc, { base_stat, effort, stat }) => {
-  //   return { ...acc, [stat.name]: { base_stat, effort } };
-  // }, {}),
-  // ...
-
   return (
     <div className="App">
       <Container>
