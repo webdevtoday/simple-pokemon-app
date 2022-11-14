@@ -114,7 +114,7 @@ const App = () => {
                 multiple
                 limitTags={2}
                 getOptionLabel={(option) => option.label}
-                sx={{ maxWidth: 500 }}
+                sx={{ maxWidth: 600 }}
               />
             </Grid>
             <Grid
@@ -128,7 +128,7 @@ const App = () => {
             >
               <Autocomplete
                 freeSolo
-                sx={{ maxWidth: 300, width: "100%" }}
+                sx={{ maxWidth: { xs: "auto", sm: 300 }, width: "100%" }}
                 open={open}
                 onOpen={() => {
                   setOpen(true);
