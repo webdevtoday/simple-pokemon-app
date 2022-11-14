@@ -18,20 +18,59 @@ import {
 import parse from "autosuggest-highlight/parse";
 import match from "autosuggest-highlight/match";
 
-const sleep = (delay = 0) => {
-  return new Promise((resolve) => {
-    setTimeout(resolve, delay);
-  });
-};
+import { Pokedex } from "pokeapi-js-wrapper";
+
+const P = new Pokedex();
+const rowsPerPageOptions = [10, 20, 50];
 
 const App = () => {
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const handleChangePage = (event, value) => {
+    setPage(value);
+  };
+
+  const handleChangeRowsPerPage = (event) => {
+    setRowsPerPage(parseInt(event.target.value, 10));
+    setPage(0);
+  };
+
+  const [pokemonTypes, setPokemonTypes] = useState([]);
+  const [pokemonNames, setPokemonNames] = useState([]);
+  const [pokemonCount, setPokemonCount] = useState(0);
+  const [pokemons, setPokemons] = useState([]);
+  useEffect(() => {
+    P.getTypesList().then(({ results }) => {
+      setPokemonTypes(results.map(({ name }) => ({ type: name })));
+    });
+    P.getPokemonsList().then(({ results, count }) => {
+      setPokemonNames(results.map(({ name }) => ({ name })));
+      setPokemonCount(count);
+    });
+  }, []);
+  useEffect(() => {
+    const startIndex = page * rowsPerPage;
+    const endIndex = startIndex + rowsPerPage;
+
+    P.getPokemonByName(
+      pokemonNames.slice(startIndex, endIndex).map(({ name }) => name)
+    ).then((result) =>
+      setPokemons(
+        result.map(({ name, sprites, types, stats }) => ({
+          name,
+          avatar:
+            sprites.other.home.front_default ??
+            sprites.other["official-artwork"].front_default,
+          types,
+          stats,
+        }))
+      )
+    );
+  }, [page, rowsPerPage, pokemonNames]);
 
   const [open, setOpen] = useState(false);
   const [options, setOptions] = useState([]);
   const loading = open && options.length === 0;
-
   useEffect(() => {
     let active = true;
 
@@ -40,11 +79,8 @@ const App = () => {
     }
 
     (async () => {
-      await sleep(1e3); // For demo purposes.
-
       if (active) {
-        // TODO: SET AUTOCOMPLETE OPTIONS
-        setOptions([]);
+        setOptions(pokemonNames);
       }
     })();
 
@@ -58,15 +94,6 @@ const App = () => {
       setOptions([]);
     }
   }, [open]);
-
-  const handleChangePage = (event, value) => {
-    setPage(value);
-  };
-
-  const handleChangeRowsPerPage = (event) => {
-    setRowsPerPage(parseInt(event.target.value, 10));
-    setPage(0);
-  };
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -82,7 +109,7 @@ const App = () => {
           <Grid container>
             <Grid xs={12} md={6}>
               <Autocomplete
-                options={[]}
+                options={pokemonTypes}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -91,10 +118,10 @@ const App = () => {
                   />
                 )}
                 renderOption={(props, option, { inputValue }) => {
-                  const matches = match(option.label, inputValue, {
+                  const matches = match(option.type, inputValue, {
                     insideWords: true,
                   });
-                  const parts = parse(option.label, matches);
+                  const parts = parse(option.type, matches);
 
                   return (
                     <li {...props}>
@@ -113,7 +140,7 @@ const App = () => {
                 }}
                 multiple
                 limitTags={2}
-                getOptionLabel={(option) => option.label}
+                getOptionLabel={(option) => option.type}
                 sx={{ maxWidth: 600 }}
               />
             </Grid>
@@ -137,9 +164,9 @@ const App = () => {
                   setOpen(false);
                 }}
                 isOptionEqualToValue={(option, value) =>
-                  option.label === value.label
+                  option.name === value.name
                 }
-                getOptionLabel={(option) => option.label}
+                getOptionLabel={(option) => option.name}
                 options={options}
                 loading={loading}
                 renderInput={(params) => (
@@ -160,10 +187,10 @@ const App = () => {
                   />
                 )}
                 renderOption={(props, option, { inputValue }) => {
-                  const matches = match(option.label, inputValue, {
+                  const matches = match(option.name, inputValue, {
                     insideWords: true,
                   });
-                  const parts = parse(option.label, matches);
+                  const parts = parse(option.name, matches);
 
                   return (
                     <li {...props}>
@@ -189,11 +216,11 @@ const App = () => {
         <Box sx={{ my: 2 }}>
           <TablePagination
             component="div"
-            count={100}
+            count={pokemonCount}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
-            rowsPerPageOptions={[10, 20, 50]}
+            rowsPerPageOptions={rowsPerPageOptions}
             onRowsPerPageChange={handleChangeRowsPerPage}
             showFirstButton
             showLastButton
@@ -201,17 +228,12 @@ const App = () => {
           />
 
           <Grid container spacing={2}>
-            {[...new Array(10)].map((v, i) => (
-              <Grid key={i} xs={12} sm={6} md={4} xl={3}>
+            {pokemons.map(({ avatar, name }) => (
+              <Grid key={name} xs={12} sm={6} md={4} xl={3}>
                 <Card>
-                  <CardMedia
-                    component="img"
-                    height="194"
-                    image="https://assets.pokemon.com/assets/cms2/img/pokedex/detail/001.png"
-                    alt="Bulbasaur"
-                  />
+                  <CardMedia component="img" image={avatar} alt={name} />
                   <CardHeader
-                    title="Pokemon Name"
+                    title={name}
                     subheader="type (should visually look as a colored tag)"
                   />
                   <CardContent>
@@ -227,11 +249,11 @@ const App = () => {
 
           <TablePagination
             component="div"
-            count={100}
+            count={pokemonCount}
             page={page}
             onPageChange={handleChangePage}
             rowsPerPage={rowsPerPage}
-            rowsPerPageOptions={[10, 20, 50]}
+            rowsPerPageOptions={rowsPerPageOptions}
             onRowsPerPageChange={handleChangeRowsPerPage}
             showFirstButton
             showLastButton
