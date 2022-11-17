@@ -13,7 +13,7 @@ import {
   Unstable_Grid2 as Grid,
   Autocomplete,
   TextField,
-  CircularProgress,
+  Skeleton,
 } from "@mui/material";
 import parse from "autosuggest-highlight/parse";
 import match from "autosuggest-highlight/match";
@@ -49,12 +49,14 @@ const App = () => {
     });
   }, []);
   useEffect(() => {
+    setPokemons([]);
+
     const startIndex = page * rowsPerPage;
     const endIndex = startIndex + rowsPerPage;
 
     P.getPokemonByName(
       pokemonNames.slice(startIndex, endIndex).map(({ name }) => name)
-    ).then((result) =>
+    ).then((result) => {
       setPokemons(
         result.map(({ name, sprites, types, stats }) => ({
           name,
@@ -64,36 +66,9 @@ const App = () => {
           types,
           stats,
         }))
-      )
-    );
+      );
+    });
   }, [page, rowsPerPage, pokemonNames]);
-
-  const [open, setOpen] = useState(false);
-  const [options, setOptions] = useState([]);
-  const loading = open && options.length === 0;
-  useEffect(() => {
-    let active = true;
-
-    if (!loading) {
-      return undefined;
-    }
-
-    (async () => {
-      if (active) {
-        setOptions(pokemonNames);
-      }
-    })();
-
-    return () => {
-      active = false;
-    };
-  }, [loading]);
-
-  useEffect(() => {
-    if (!open) {
-      setOptions([]);
-    }
-  }, [open]);
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -156,35 +131,13 @@ const App = () => {
               <Autocomplete
                 freeSolo
                 sx={{ maxWidth: { xs: "auto", sm: 300 }, width: "100%" }}
-                open={open}
-                onOpen={() => {
-                  setOpen(true);
-                }}
-                onClose={() => {
-                  setOpen(false);
-                }}
                 isOptionEqualToValue={(option, value) =>
                   option.name === value.name
                 }
                 getOptionLabel={(option) => option.name}
-                options={options}
-                loading={loading}
+                options={pokemonNames}
                 renderInput={(params) => (
-                  <TextField
-                    {...params}
-                    label="Pokémon name"
-                    InputProps={{
-                      ...params.InputProps,
-                      endAdornment: (
-                        <>
-                          {loading ? (
-                            <CircularProgress color="inherit" size={20} />
-                          ) : null}
-                          {params.InputProps.endAdornment}
-                        </>
-                      ),
-                    }}
-                  />
+                  <TextField {...params} label="Pokémon name" />
                 )}
                 renderOption={(props, option, { inputValue }) => {
                   const matches = match(option.name, inputValue, {
@@ -228,23 +181,56 @@ const App = () => {
           />
 
           <Grid container spacing={2}>
-            {pokemons.map(({ avatar, name }) => (
-              <Grid key={name} xs={12} sm={6} md={4} xl={3}>
-                <Card>
-                  <CardMedia component="img" image={avatar} alt={name} />
-                  <CardHeader
-                    title={name}
-                    subheader="type (should visually look as a colored tag)"
-                  />
-                  <CardContent>
-                    <Typography variant="body2" color="text.secondary">
-                      the main pokemon stats (whichever additional pokemon info
-                      you want to show)
-                    </Typography>
-                  </CardContent>
-                </Card>
-              </Grid>
-            ))}
+            {pokemons.length > 0
+              ? pokemons.map(({ avatar, name }) => (
+                  <Grid key={name} xs={12} sm={6} md={4} xl={3}>
+                    <Card>
+                      <CardMedia component="img" image={avatar} alt={name} />
+                      <CardHeader
+                        title={name}
+                        subheader="type (should visually look as a colored tag)"
+                      />
+                      <CardContent>
+                        <Typography variant="body2" color="text.secondary">
+                          the main pokemon stats (whichever additional pokemon
+                          info you want to show)
+                        </Typography>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))
+              : [...new Array(rowsPerPage)].map((v, i) => (
+                  <Grid key={i} xs={12} sm={6} md={4} xl={3}>
+                    <Card>
+                      <Skeleton
+                        sx={{ height: 190 }}
+                        animation="wave"
+                        variant="rectangular"
+                      />
+                      <CardHeader
+                        title={
+                          <Skeleton
+                            animation="wave"
+                            height={10}
+                            width="80%"
+                            style={{ marginBottom: 6 }}
+                          />
+                        }
+                        subheader={
+                          <Skeleton animation="wave" height={10} width="40%" />
+                        }
+                      />
+                      <CardContent>
+                        <Skeleton
+                          animation="wave"
+                          height={10}
+                          style={{ marginBottom: 6 }}
+                        />
+                        <Skeleton animation="wave" height={10} width="80%" />
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))}
           </Grid>
 
           <TablePagination
