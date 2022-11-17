@@ -1,8 +1,7 @@
 {
   "files": {
     "main.css": "/simple-pokemon-app/static/css/main.4db14bf2.css",
-    "main.js": "/simple-pokemon-app/static/js/main.54f7cacc.js",
-    "static/js/787.a8fe51ff.chunk.js": "/simple-pokemon-app/static/js/787.a8fe51ff.chunk.js",
+    "main.js": "/simple-pokemon-app/static/js/main.0eec6122.js",
     "static/media/roboto-all-500-normal.woff": "/simple-pokemon-app/static/media/roboto-all-500-normal.0ab669b7a0d19b178f57.woff",
     "static/media/roboto-all-700-normal.woff": "/simple-pokemon-app/static/media/roboto-all-700-normal.a457fde362a540fcadff.woff",
     "static/media/roboto-all-400-normal.woff": "/simple-pokemon-app/static/media/roboto-all-400-normal.c5d001fa922fa66a147f.woff",
@@ -37,11 +36,10 @@
     "static/media/roboto-greek-ext-700-normal.woff2": "/simple-pokemon-app/static/media/roboto-greek-ext-700-normal.bd9854c751441ccc1a70.woff2",
     "index.html": "/simple-pokemon-app/index.html",
     "main.4db14bf2.css.map": "/simple-pokemon-app/static/css/main.4db14bf2.css.map",
-    "main.54f7cacc.js.map": "/simple-pokemon-app/static/js/main.54f7cacc.js.map",
-    "787.a8fe51ff.chunk.js.map": "/simple-pokemon-app/static/js/787.a8fe51ff.chunk.js.map"
+    "main.0eec6122.js.map": "/simple-pokemon-app/static/js/main.0eec6122.js.map"
   },
   "entrypoints": [
     "static/css/main.4db14bf2.css",
-    "static/js/main.54f7cacc.js"
+    "static/js/main.0eec6122.js"
   ]
 }
