@@ -14,6 +14,8 @@ import {
   Autocomplete,
   TextField,
   Skeleton,
+  Alert,
+  AlertTitle,
 } from "@mui/material";
 import parse from "autosuggest-highlight/parse";
 import match from "autosuggest-highlight/match";
@@ -38,16 +40,53 @@ const App = () => {
   const [pokemonTypes, setPokemonTypes] = useState([]);
   const [pokemonNames, setPokemonNames] = useState([]);
   const [pokemonCount, setPokemonCount] = useState(0);
+  const [filteredPokemonNames, setFilteredPokemonNames] = useState([]);
   const [pokemons, setPokemons] = useState([]);
+  const [filters, setFilters] = useState({
+    pokemonName: "",
+    pokemonType: [],
+  });
+  const [isEmptyResult, setIsEmptyResult] = useState(false);
   useEffect(() => {
-    P.getTypesList().then(({ results }) => {
-      setPokemonTypes(results.map(({ name }) => ({ type: name })));
-    });
-    P.getPokemonsList().then(({ results, count }) => {
-      setPokemonNames(results.map(({ name }) => ({ name })));
-      setPokemonCount(count);
-    });
-  }, []);
+    setIsEmptyResult(false);
+
+    if (pokemonTypes.length === 0) {
+      P.getTypesList().then(({ results }) => {
+        setPokemonTypes(results.map(({ name }) => ({ type: name })));
+      });
+    }
+    if (pokemonNames.length === 0) {
+      P.getPokemonsList().then(({ results }) => {
+        setPokemonNames(results.map(({ name }) => ({ name })));
+      });
+    }
+
+    (async function () {
+      let filtered = filters.pokemonType.length > 0 ? [] : pokemonNames;
+
+      if (filters.pokemonType.length > 0) {
+        const results = await P.getTypeByName(
+          filters.pokemonType.map(({ type }) => type)
+        );
+        filtered = results
+          .map(({ pokemon }) => pokemon)
+          .reduce((acc, arr) => [...acc, ...arr])
+          .map(({ pokemon }) => ({ name: pokemon.name }));
+      }
+
+      if (filters.pokemonName) {
+        filtered = filtered.filter(({ name }) =>
+          name.includes(filters.pokemonName)
+        );
+      }
+
+      if (filtered.length === 0 && pokemonNames.length !== 0) {
+        setIsEmptyResult(true);
+      }
+      setFilteredPokemonNames(filtered);
+      setPokemonCount(filtered.length);
+    })();
+  }, [pokemonNames, filters]);
   useEffect(() => {
     setPokemons([]);
 
@@ -55,20 +94,21 @@ const App = () => {
     const endIndex = startIndex + rowsPerPage;
 
     P.getPokemonByName(
-      pokemonNames.slice(startIndex, endIndex).map(({ name }) => name)
+      filteredPokemonNames.slice(startIndex, endIndex).map(({ name }) => name)
     ).then((result) => {
       setPokemons(
         result.map(({ name, sprites, types, stats }) => ({
           name,
           avatar:
             sprites.other.home.front_default ??
-            sprites.other["official-artwork"].front_default,
+            sprites.other["official-artwork"].front_default ??
+            sprites.front_default,
           types,
           stats,
         }))
       );
     });
-  }, [page, rowsPerPage, pokemonNames]);
+  }, [page, rowsPerPage, filteredPokemonNames]);
 
   return (
     <Box sx={{ flexGrow: 1 }}>
@@ -85,6 +125,13 @@ const App = () => {
             <Grid xs={12} md={6}>
               <Autocomplete
                 options={pokemonTypes}
+                value={filters.pokemonType}
+                onChange={(event, newValue) => {
+                  setFilters((oldState) => ({
+                    ...oldState,
+                    pokemonType: newValue,
+                  }));
+                }}
                 renderInput={(params) => (
                   <TextField
                     {...params}
@@ -131,10 +178,24 @@ const App = () => {
               <Autocomplete
                 freeSolo
                 sx={{ maxWidth: { xs: "auto", sm: 300 }, width: "100%" }}
+                value={filters.pokemonName}
+                onChange={(event, newValue) => {
+                  setFilters((oldState) => ({
+                    ...oldState,
+                    pokemonName: newValue?.name ?? newValue ?? "",
+                  }));
+                }}
                 isOptionEqualToValue={(option, value) =>
                   option.name === value.name
                 }
-                getOptionLabel={(option) => option.name}
+                getOptionLabel={(option) => {
+                  // Value selected with enter, right from the input
+                  if (typeof option === "string") {
+                    return option;
+                  }
+                  // Regular option
+                  return option.name;
+                }}
                 options={pokemonNames}
                 renderInput={(params) => (
                   <TextField {...params} label="Pokémon name" />
@@ -167,84 +228,98 @@ const App = () => {
       </Container>
       <Container>
         <Box sx={{ my: 2 }}>
-          <TablePagination
-            component="div"
-            count={pokemonCount}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            rowsPerPageOptions={rowsPerPageOptions}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            showFirstButton
-            showLastButton
-            labelRowsPerPage="Cards per page:"
-          />
+          {!isEmptyResult && (
+            <TablePagination
+              component="div"
+              count={pokemonCount}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              rowsPerPageOptions={rowsPerPageOptions}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              showFirstButton
+              showLastButton
+              labelRowsPerPage="Cards per page:"
+            />
+          )}
 
           <Grid container spacing={2}>
-            {pokemons.length > 0
-              ? pokemons.map(({ avatar, name }) => (
-                  <Grid key={name} xs={12} sm={6} md={4} xl={3}>
-                    <Card>
-                      <CardMedia component="img" image={avatar} alt={name} />
-                      <CardHeader
-                        title={name}
-                        subheader="type (should visually look as a colored tag)"
-                      />
-                      <CardContent>
-                        <Typography variant="body2" color="text.secondary">
-                          the main pokemon stats (whichever additional pokemon
-                          info you want to show)
-                        </Typography>
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))
-              : [...new Array(rowsPerPage)].map((v, i) => (
-                  <Grid key={i} xs={12} sm={6} md={4} xl={3}>
-                    <Card>
-                      <Skeleton
-                        sx={{ height: 190 }}
-                        animation="wave"
-                        variant="rectangular"
-                      />
-                      <CardHeader
-                        title={
-                          <Skeleton
-                            animation="wave"
-                            height={10}
-                            width="80%"
-                            style={{ marginBottom: 6 }}
-                          />
-                        }
-                        subheader={
-                          <Skeleton animation="wave" height={10} width="40%" />
-                        }
-                      />
-                      <CardContent>
+            {isEmptyResult && (
+              <Container maxWidth="sm" sx={{ py: 10 }}>
+                <Alert severity="warning">
+                  <AlertTitle>No Pokémon Matched Your Search!</AlertTitle>
+                  Try to use — <strong>filters different values!</strong>
+                </Alert>
+              </Container>
+            )}
+            {pokemons.length === 0 &&
+              !isEmptyResult &&
+              [...new Array(rowsPerPage)].map((v, i) => (
+                <Grid key={i} xs={12} sm={6} md={4} xl={3}>
+                  <Card>
+                    <Skeleton
+                      sx={{ height: 190 }}
+                      animation="wave"
+                      variant="rectangular"
+                    />
+                    <CardHeader
+                      title={
                         <Skeleton
                           animation="wave"
                           height={10}
+                          width="80%"
                           style={{ marginBottom: 6 }}
                         />
-                        <Skeleton animation="wave" height={10} width="80%" />
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
+                      }
+                      subheader={
+                        <Skeleton animation="wave" height={10} width="40%" />
+                      }
+                    />
+                    <CardContent>
+                      <Skeleton
+                        animation="wave"
+                        height={10}
+                        style={{ marginBottom: 6 }}
+                      />
+                      <Skeleton animation="wave" height={10} width="80%" />
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
+            {pokemons.length > 0 &&
+              pokemons.map(({ avatar, name }) => (
+                <Grid key={name} xs={12} sm={6} md={4} xl={3}>
+                  <Card>
+                    <CardMedia component="img" image={avatar} alt={name} />
+                    <CardHeader
+                      title={name}
+                      subheader="type (should visually look as a colored tag)"
+                    />
+                    <CardContent>
+                      <Typography variant="body2" color="text.secondary">
+                        the main pokemon stats (whichever additional pokemon
+                        info you want to show)
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              ))}
           </Grid>
 
-          <TablePagination
-            component="div"
-            count={pokemonCount}
-            page={page}
-            onPageChange={handleChangePage}
-            rowsPerPage={rowsPerPage}
-            rowsPerPageOptions={rowsPerPageOptions}
-            onRowsPerPageChange={handleChangeRowsPerPage}
-            showFirstButton
-            showLastButton
-            labelRowsPerPage="Cards per page:"
-          />
+          {!isEmptyResult && (
+            <TablePagination
+              component="div"
+              count={pokemonCount}
+              page={page}
+              onPageChange={handleChangePage}
+              rowsPerPage={rowsPerPage}
+              rowsPerPageOptions={rowsPerPageOptions}
+              onRowsPerPageChange={handleChangeRowsPerPage}
+              showFirstButton
+              showLastButton
+              labelRowsPerPage="Cards per page:"
+            />
+          )}
         </Box>
       </Container>
     </Box>
